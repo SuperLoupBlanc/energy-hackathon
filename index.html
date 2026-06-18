@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AstraFlux - Energy Hackathon</title>
+  <meta name="description" content="Mini jeu Three.js sur l'extraction futuriste d'energie magnetique passive.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" aria-label="AstraFlux game canvas"></canvas>
+
+    <header class="hud topbar">
+      <div class="brand">
+        <p class="eyebrow">Defend Intelligence Hackathon - Juin 2026</p>
+        <h1>AstraFlux</h1>
+      </div>
+      <div class="actions">
+        <button id="fullscreenBtn" type="button">Fullscreen</button>
+        <button id="pauseBtn" type="button">Pause</button>
+      </div>
+    </header>
+
+    <section class="hud panel left-panel">
+      <h2>Mission</h2>
+      <p>
+        Guide Nyra dans le puits magnetique. Capture le flux positif, stabilise
+        le flux inverse et garde le noyau froid proche de l'equilibre.
+      </p>
+      <div class="stat"><span>Energie +</span><strong id="energyValue">0</strong></div>
+      <div class="stat"><span>Energie inverse</span><strong id="inverseValue">0</strong></div>
+      <div class="stat"><span>Pression</span><strong id="pressureValue">1.00 atm</strong></div>
+      <div class="stat"><span>Rendement</span><strong id="yieldValue">0 %</strong></div>
+      <div class="stat"><span>Equilibre</span><strong id="balanceValue">0</strong></div>
+    </section>
+
+    <section class="hud panel right-panel">
+      <h2>Modele</h2>
+      <p id="techText">
+        Correlation fictive: pression locale, ordre cristallin hexagonal et
+        couplage magnetocalorique augmentent l'absorption passive du flux.
+      </p>
+      <div class="meter">
+        <span>Stabilite du noyau</span>
+        <div><i id="stabilityBar"></i></div>
+      </div>
+      <canvas id="chart" width="320" height="190"></canvas>
+    </section>
+
+    <section class="hud bottom-help">
+      <span>ZQSD / fleches</span>
+      <span>Espace : impulsion de levitation</span>
+      <span>Objectif : equilibre proche de 0</span>
+    </section>
+
+    <div id="startScreen" class="overlay">
+      <div class="modal">
+        <p class="eyebrow">Prototype jouable GitHub Pages</p>
+        <h2>Extraction passive du champ magnetique</h2>
+        <p>
+          Nyra exploite un collecteur sans friction inspire des effets
+          magnetocalorique et barocalorique. Plus la pression atmospherique
+          locale comprime le reseau silicium-verre, plus le rendement monte.
+          Le flux inverse est stocke dans un noyau froid ordonne en cellules
+          hexagonales.
+        </p>
+        <button id="startBtn" type="button">Demarrer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
