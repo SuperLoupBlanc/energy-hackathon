@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Energy Hackathon - Smart Energy Dashboard</title>
+  <meta name="description" content="Prototype hackathon pour visualiser, comprendre et réduire la consommation énergétique.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav">
+      <a class="logo" href="#top">EnergyHack</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Ouvrir le menu">☰</button>
+      <div class="nav-links" id="navLinks">
+        <a href="#probleme">Problème</a>
+        <a href="#solution">Solution</a>
+        <a href="#demo">Démo</a>
+        <a href="#impact">Impact</a>
+        <a href="#team">Équipe</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-content">
+        <p class="badge">Hackathon DefendIntelligence - thème Energy</p>
+        <h1>Réduire la consommation énergétique avec un tableau de bord intelligent</h1>
+        <p class="hero-text">
+          Un prototype web simple pour suivre la consommation, détecter les pics et proposer des actions concrètes.
+        </p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#demo">Voir la démo</a>
+          <a class="btn secondary" href="https://github.com/" target="_blank" rel="noreferrer">Voir le code</a>
+        </div>
+      </div>
+      <div class="hero-card" aria-label="Aperçu consommation énergie">
+        <div class="card-top">
+          <span>Consommation actuelle</span>
+          <strong id="currentKw">3.2 kW</strong>
+        </div>
+        <div class="meter">
+          <div class="meter-fill" id="meterFill"></div>
+        </div>
+        <div class="stats-grid">
+          <div><span>Économie</span><strong id="saving">18%</strong></div>
+          <div><span>CO2 évité</span><strong id="co2">42 kg</strong></div>
+          <div><span>Alertes</span><strong id="alerts">2</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="probleme" class="section">
+      <div class="section-title">
+        <p>Pourquoi</p>
+        <h2>Le problème</h2>
+      </div>
+      <div class="cards three">
+        <article class="card">
+          <h3>Manque de visibilité</h3>
+          <p>Les utilisateurs voient rarement quels appareils ou usages provoquent les pics de consommation.</p>
+        </article>
+        <article class="card">
+          <h3>Coûts variables</h3>
+          <p>Les prix de l'énergie changent et rendent difficile le choix du meilleur moment pour consommer.</p>
+        </article>
+        <article class="card">
+          <h3>Actions peu claires</h3>
+          <p>Les données seules ne suffisent pas. Il faut des recommandations simples et exploitables.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="solution" class="section split">
+      <div>
+        <p class="eyebrow">Notre idée</p>
+        <h2>Un assistant énergie orienté décision</h2>
+        <p>
+          Le tableau de bord analyse les habitudes, affiche les pics et classe les actions par gain estimé.
+          L'objectif est de transformer les données en décisions rapides.
+        </p>
+        <ul class="check-list">
+          <li>Suivi horaire de la consommation.</li>
+          <li>Détection des anomalies.</li>
+          <li>Conseils pour déplacer ou réduire certains usages.</li>
+          <li>Score d'impact économique et carbone.</li>
+        </ul>
+      </div>
+      <div class="mockup">
+        <div class="mockup-header"></div>
+        <div class="chart" id="barChart"></div>
+      </div>
+    </section>
+
+    <section id="demo" class="section demo-section">
+      <div class="section-title">
+        <p>Prototype</p>
+        <h2>Démo interactive</h2>
+      </div>
+      <div class="demo-panel">
+        <label for="houseSize">Taille du logement</label>
+        <input id="houseSize" type="range" min="20" max="160" value="70">
+        <div class="result-line">
+          <span>Surface</span>
+          <strong><span id="surfaceValue">70</span> m²</strong>
+        </div>
+        <div class="result-line">
+          <span>Consommation estimée</span>
+          <strong><span id="estimateValue">350</span> kWh/mois</strong>
+        </div>
+        <div class="result-line">
+          <span>Action recommandée</span>
+          <strong id="recommendation">Décaler le chauffage en heures creuses</strong>
+        </div>
+      </div>
+    </section>
+
+    <section id="impact" class="section">
+      <div class="section-title">
+        <p>Valeur</p>
+        <h2>Impact attendu</h2>
+      </div>
+      <div class="cards three">
+        <article class="metric">
+          <strong>-15%</strong>
+          <span>consommation visée</span>
+        </article>
+        <article class="metric">
+          <strong>+30%</strong>
+          <span>meilleure compréhension des usages</span>
+        </article>
+        <article class="metric">
+          <strong>24h</strong>
+          <span>pour obtenir les premiers conseils</span>
+        </article>
+      </div>
+    </section>
+
+    <section id="team" class="section split team">
+      <div>
+        <p class="eyebrow">Équipe</p>
+        <h2>Prêt pour la présentation</h2>
+        <p>
+          Remplace ce texte par les noms des membres, la stack technique et les prochaines étapes.
+        </p>
+      </div>
+      <div class="team-box">
+        <p><strong>Stack :</strong> HTML, CSS, JavaScript</p>
+        <p><strong>Déploiement :</strong> GitHub Pages</p>
+        <p><strong>Livrable :</strong> URL publique + vidéo démo</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>EnergyHack - prototype hackathon - 2026</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
