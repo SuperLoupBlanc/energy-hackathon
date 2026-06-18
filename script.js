@@ -16,6 +16,13 @@ camera.position.set(0, 7, 15);
 
 const clock = new THREE.Clock();
 const keys = new Set();
+const gamepadState = {
+  connected: false,
+  name: "",
+  x: 0,
+  z: 0,
+  lift: false
+};
 
 let started = false;
 let paused = false;
@@ -273,8 +280,45 @@ function predictYield(distance, pressureValue, balance, stabilityValue) {
   return Math.max(0, Math.min(1, value * 0.72 + base * 0.28));
 }
 
+function readGamepad() {
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  const pad = [...pads].find(Boolean);
+
+  if (!pad) {
+    gamepadState.connected = false;
+    gamepadState.x = 0;
+    gamepadState.z = 0;
+    gamepadState.lift = false;
+    return;
+  }
+
+  const deadzone = 0.16;
+  const rawX = pad.axes[0] || 0;
+  const rawZ = pad.axes[1] || 0;
+  const magnitude = Math.hypot(rawX, rawZ);
+  const scale = magnitude > deadzone ? Math.min(1, (magnitude - deadzone) / (1 - deadzone)) / magnitude : 0;
+
+  gamepadState.connected = true;
+  gamepadState.name = pad.id || "Gamepad";
+  gamepadState.x = rawX * scale;
+  gamepadState.z = rawZ * scale;
+  gamepadState.lift = Boolean(
+    pad.buttons[0]?.pressed ||
+    pad.buttons[1]?.pressed ||
+    pad.buttons[7]?.pressed
+  );
+}
+
 addEventListener("keydown", (event) => keys.add(event.key.toLowerCase()));
 addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
+addEventListener("gamepadconnected", (event) => {
+  gamepadState.connected = true;
+  gamepadState.name = event.gamepad.id || "Gamepad";
+});
+addEventListener("gamepaddisconnected", () => {
+  gamepadState.connected = false;
+  gamepadState.name = "";
+});
 
 document.getElementById("startBtn").onclick = () => {
   started = true;
@@ -305,19 +349,23 @@ function animate() {
     return;
   }
 
+  readGamepad();
+
   let dx = 0;
   let dz = 0;
   if (keys.has("z") || keys.has("arrowup")) dz -= 1;
   if (keys.has("s") || keys.has("arrowdown")) dz += 1;
   if (keys.has("q") || keys.has("arrowleft")) dx -= 1;
   if (keys.has("d") || keys.has("arrowright")) dx += 1;
+  dx += gamepadState.x;
+  dz += gamepadState.z;
 
   const moving = dx !== 0 || dz !== 0;
   const length = Math.hypot(dx, dz) || 1;
   dx /= length;
   dz /= length;
 
-  const levitating = keys.has(" ");
+  const levitating = keys.has(" ") || gamepadState.lift;
   const speed = levitating ? 10.5 : 6.2;
   player.position.x += dx * speed * dt;
   player.position.z += dz * speed * dt;
@@ -416,6 +464,8 @@ function animate() {
     ui.tech.textContent = "Alerte: le flux inverse sature le noyau. Reviens pres du centre et collecte du flux oppose pour restaurer l'equilibre.";
   } else if (pressure > 2.4) {
     ui.tech.textContent = "Haute pression: le reseau silicium-verre hexagonal augmente l'absorption barocalorique et stabilise le froid inverse.";
+  } else if (gamepadState.connected) {
+    ui.tech.textContent = `Manette active: ${gamepadState.name}. Stick gauche pour naviguer, A/Croix pour amplifier la levitation.`;
   } else {
     ui.tech.textContent = "Correlation fictive: pression locale, ordre cristallin hexagonal et couplage magnetocalorique augmentent l'absorption passive du flux.";
   }
