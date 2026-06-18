@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AstraFlux - Energy Hackathon</title>
-  <meta name="description" content="Mini jeu Three.js sur l'extraction futuriste d'energie magnetique passive.">
+  <meta name="description" content="Mini jeu Three.js sur l'extraction futuriste d'énergie magnétique passive.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,48 +25,60 @@
     <section class="hud panel left-panel">
       <h2>Mission</h2>
       <p>
-        Guide Nyra dans le puits magnetique. Capture le flux positif, stabilise
-        le flux inverse et garde le noyau froid proche de l'equilibre.
+        Guide Nyra dans le puits magnétique. Le collecteur absorbe mieux sous
+        pression, mais chaque mouvement consomme du flux positif. Capture les
+        bonnes polarités pour garder le noyau froid stable.
       </p>
-      <div class="stat"><span>Energie +</span><strong id="energyValue">0</strong></div>
-      <div class="stat"><span>Energie inverse</span><strong id="inverseValue">0</strong></div>
+      <div class="stat"><span>Énergie +</span><strong id="energyValue">0</strong></div>
+      <div class="stat"><span>Énergie inverse</span><strong id="inverseValue">0</strong></div>
       <div class="stat"><span>Pression</span><strong id="pressureValue">1.00 atm</strong></div>
       <div class="stat"><span>Rendement</span><strong id="yieldValue">0 %</strong></div>
       <div class="stat"><span>Equilibre</span><strong id="balanceValue">0</strong></div>
     </section>
 
     <section class="hud panel right-panel">
-      <h2>Modele</h2>
+      <h2>Modèle</h2>
       <p id="techText">
-        Correlation fictive: pression locale, ordre cristallin hexagonal et
-        couplage magnetocalorique augmentent l'absorption passive du flux.
+        Hypothèse AstraFlux : la pression augmente l'ordre du réseau
+        silicium-verre, ce qui amplifie le couplage magnétocalorique et la
+        rétention du flux inverse.
       </p>
       <div class="meter">
-        <span>Stabilite du noyau</span>
+        <span>Stabilité du noyau</span>
         <div><i id="stabilityBar"></i></div>
       </div>
       <canvas id="chart" width="320" height="190"></canvas>
     </section>
 
     <section class="hud bottom-help">
-      <span>ZQSD / fleches</span>
+      <span>ZQSD / flèches</span>
       <span>Manette : stick gauche</span>
-      <span>Espace / A : impulsion de levitation</span>
-      <span>Objectif : equilibre proche de 0</span>
+      <span>Espace / A : impulsion de lévitation</span>
+      <span>Shift / B : dash</span>
+      <span>U / X : ultimate inverse</span>
+      <span>M : musique YouTube</span>
+      <span>P : module Amiga</span>
+      <span>Objectif : équilibre proche de 0</span>
     </section>
 
     <div id="startScreen" class="overlay">
       <div class="modal">
         <p class="eyebrow">Prototype jouable GitHub Pages</p>
-        <h2>Extraction passive du champ magnetique</h2>
+        <h2>Extraction du champ magnétique</h2>
         <p>
-          Nyra exploite un collecteur sans friction inspire des effets
-          magnetocalorique et barocalorique. Plus la pression atmospherique
-          locale comprime le reseau silicium-verre, plus le rendement monte.
-          Le flux inverse est stocke dans un noyau froid ordonne en cellules
-          hexagonales.
+          Dans AstraFlux, l'énergie n'est pas produite par rotation mécanique :
+          elle est absorbée par déséquilibre des forces. Nyra pilote un
+          collecteur sans friction inspiré des effets magnétocalorique et
+          barocalorique. Deux énergies circulent dans le champ magnétique :
+          quand la densité augmente, la pression monte et comprime un noyau en
+          silicium-verre. Les atomes du verre sont liés dans une structure
+          hexagonale tridimensionnelle. Plus ce verre est contraint, plus il
+          stabilise un noyau froid capable de stocker le flux d'energie inverse.
+          Le but n'est pas seulement d'accumuler de l'énergie, mais de maintenir
+          l'équilibre entre les deux polarités. C'est aussi très satisfaisant de
+          collecter les flux.
         </p>
-        <button id="startBtn" type="button">Demarrer</button>
+        <button id="startBtn" type="button">Démarrer</button>
       </div>
     </div>
   </div>
@@ -74,6 +86,25 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    window.openMptReady = false;
+    window.Module = window.Module || {};
+    window.Module.locateFile = function (path) {
+      return "https://cdn.jsdelivr.net/gh/deskjet/chiptune2.js@master/" + path;
+    };
+    window.Module.onRuntimeInitialized = function () {
+      window.libopenmpt = window.Module;
+      window.openMptReady = true;
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/gh/deskjet/chiptune2.js@master/libopenmpt.js"></script>
+  <script>
+    if (window.Module) {
+      window.libopenmpt = window.Module;
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/gh/deskjet/chiptune2.js@master/chiptune2.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

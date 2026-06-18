@@ -224,8 +224,17 @@ button:hover {
     left: 14px;
     right: auto;
     bottom: 78px;
-    max-height: min(42vh, 330px);
-    overflow: auto;
+    max-height: none;
+    overflow: visible;
+    padding: 14px;
+  }
+
+  .left-panel p {
+    display: none;
+  }
+
+  .left-panel .stat {
+    padding: 7px 0;
   }
 
   .right-panel,
