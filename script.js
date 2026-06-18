@@ -42,6 +42,7 @@ let ultimateTime = 0;
 let ultimateFadeTime = 0;
 let ultimateCooldown = 0;
 let ultimateHeld = false;
+let idleTime = 0;
 const ultimateCollapsePoint = new THREE.Vector3();
 const ULTIMATE_ENERGY_COST = 2000;
 const ULTIMATE_INVERSE_REMAINING_RATIO = 0.2;
@@ -50,6 +51,11 @@ const ULTIMATE_FADE_DURATION = 3;
 let gravityEventTimer = 18;
 let gravityEventActive = false;
 let gravityEventTime = 0;
+let coreMass = 0;
+let coreCollapse = 0;
+let coreBigBangTime = 0;
+let bigBangElasticTime = 0;
+const BIG_BANG_ELASTIC_DURATION = 1.8;
 let aiModel = null;
 let audioContext = null;
 let audioEnabled = false;
@@ -73,6 +79,7 @@ let modulePlayer = null;
 let moduleBuffer = null;
 let moduleMusicOn = false;
 let moduleToggleHeld = false;
+let hudToggleHeld = false;
 const AMIGA_MODULE_PATH = "assets/Dr_Awesome_Crusader_Now_what.mod";
 
 const ui = {
@@ -272,6 +279,39 @@ function placeItem(mesh, nearPlayer = false) {
     0.7 + Math.random() * 3.1,
     player.position.z + Math.sin(a) * d
   );
+}
+
+function burstItemFromCore(mesh, power = 1) {
+  const a = Math.random() * Math.PI * 2;
+  const d = 9 + Math.random() * 26 * power;
+  mesh.position.set(
+    Math.cos(a) * d,
+    0.8 + Math.random() * 4.8,
+    Math.sin(a) * d
+  );
+}
+
+function triggerElasticBigBang() {
+  bigBangElasticTime = BIG_BANG_ELASTIC_DURATION;
+  coreBigBangTime = 1.1;
+  coreMass = 0;
+  coreCollapse = 0;
+
+  for (const item of items) {
+    const origin = item.position.clone();
+    const direction = origin.clone().sub(core.position);
+    if (direction.lengthSq() < 0.01) {
+      direction.set(Math.random() - 0.5, Math.random() * 0.5, Math.random() - 0.5);
+    }
+    direction.normalize();
+    const blastDistance = 9 + Math.random() * 12;
+    item.userData.bigBangOrigin = origin;
+    item.userData.bigBangTarget = origin.clone().addScaledVector(direction, blastDistance);
+    item.userData.bigBangReturn = origin.clone().lerp(item.userData.bigBangTarget, 0.4);
+    item.userData.bigBangPhase = Math.random() * 0.18;
+  }
+
+  ui.tech.textContent = "Big bang du noyau : explosion elastique, les flux rebondissent puis reviennent.";
 }
 
 function spawnItem(type) {
@@ -752,11 +792,15 @@ function triggerUltimate() {
 
   energy -= ULTIMATE_ENERGY_COST;
   inverse *= ULTIMATE_INVERSE_REMAINING_RATIO;
+  const distanceToCore = player.position.distanceTo(core.position);
+  const purgeRatio = THREE.MathUtils.lerp(0.9, 0.6, THREE.MathUtils.clamp(distanceToCore / 24, 0, 1));
+  coreMass *= 1 - purgeRatio;
+  coreCollapse = THREE.MathUtils.clamp(coreMass / 180, 0, 1);
   ultimateTime = ULTIMATE_ACTIVE_DURATION;
   ultimateFadeTime = ULTIMATE_FADE_DURATION;
   ultimateCooldown = 10;
   ultimateCollapsePoint.copy(player.position);
-  ui.tech.textContent = `Ultimate : ${ULTIMATE_ENERGY_COST} Énergie+ consommée, 80% du flux inverse neutralisé.`;
+  ui.tech.textContent = `Ultimate : ${ULTIMATE_ENERGY_COST} Énergie+ consommée, noyau purgé à ${Math.round(purgeRatio * 100)}%.`;
 }
 
 function predictYield(distance, pressureValue, balance, stabilityValue) {
@@ -869,6 +913,15 @@ function animate() {
     moduleToggleHeld = false;
   }
 
+  if (keys.has("h")) {
+    if (!hudToggleHeld) {
+      document.body.classList.toggle("hide-hud");
+      hudToggleHeld = true;
+    }
+  } else {
+    hudToggleHeld = false;
+  }
+
   let dx = 0;
   let dz = 0;
   if (keys.has("z") || keys.has("arrowup")) dz -= 1;
@@ -882,6 +935,8 @@ function animate() {
   const length = Math.hypot(dx, dz) || 1;
   dx /= length;
   dz /= length;
+  const activeInput = moving || keys.has(" ") || keys.has("shift") || keys.has("u") || gamepadState.lift || gamepadState.dash || gamepadState.ultimate;
+  idleTime = activeInput ? 0 : idleTime + dt;
 
   dashCooldown = Math.max(0, dashCooldown - dt);
   dashPulse = Math.max(0, dashPulse - dt * 5.4);
@@ -948,11 +1003,54 @@ function animate() {
   yieldRate = predictYield(distanceToCore, pressure, balance, stability);
 
   const walk = moving ? Math.sin(t * 9) : 0;
-  limbs[0].rotation.x = walk * 0.35;
-  limbs[1].rotation.x = -walk * 0.35;
-  limbs[2].rotation.x = -walk * 0.45;
-  limbs[3].rotation.x = walk * 0.45;
-  halo.rotation.z += dt * 3.4;
+  const dancing = idleTime > 4;
+  if (dancing) {
+    const idleMood = balance < -45 ? "needPositive" : balance > 45 ? "needInverse" : "balanced";
+    const groove = Math.sin(t * 6);
+    const bounce = Math.abs(Math.sin(t * 6)) * 0.11;
+    player.position.y += bounce;
+    head.rotation.z = -groove * 0.1;
+
+    if (idleMood === "balanced") {
+      torso.rotation.z = groove * 0.12;
+      limbs[0].rotation.x = Math.sin(t * 7) * 0.55;
+      limbs[1].rotation.x = Math.sin(t * 7 + Math.PI) * 0.55;
+      limbs[0].rotation.z = 0.55 + Math.sin(t * 5) * 0.18;
+      limbs[1].rotation.z = -0.55 + Math.sin(t * 5 + Math.PI) * 0.18;
+      limbs[2].rotation.x = Math.sin(t * 8) * 0.32;
+      limbs[3].rotation.x = Math.sin(t * 8 + Math.PI) * 0.32;
+      player.rotation.y += Math.sin(t * 4) * dt * 0.55;
+    } else if (idleMood === "needPositive") {
+      torso.rotation.z = -0.1 + Math.sin(t * 4) * 0.08;
+      limbs[0].rotation.x = -0.2 + Math.sin(t * 5) * 0.16;
+      limbs[0].rotation.z = 0.36;
+      limbs[1].rotation.x = -0.92 + Math.sin(t * 10) * 0.18;
+      limbs[1].rotation.z = -1.18 + Math.sin(t * 12) * 0.18;
+      limbs[2].rotation.x = Math.sin(t * 5) * 0.18;
+      limbs[3].rotation.x = -Math.sin(t * 5) * 0.18;
+      player.rotation.y += Math.sin(t * 2) * dt * 0.25;
+    } else {
+      torso.rotation.z = 0.1 + Math.sin(t * 9) * 0.06;
+      head.rotation.z = Math.sin(t * 10) * 0.12;
+      limbs[0].rotation.x = -0.78 + Math.sin(t * 12) * 0.12;
+      limbs[1].rotation.x = -0.78 + Math.sin(t * 12 + Math.PI) * 0.12;
+      limbs[0].rotation.z = 0.92 + Math.sin(t * 8) * 0.1;
+      limbs[1].rotation.z = -0.92 + Math.sin(t * 8 + Math.PI) * 0.1;
+      limbs[2].rotation.x = -0.18 + Math.sin(t * 12) * 0.22;
+      limbs[3].rotation.x = 0.18 + Math.sin(t * 12 + Math.PI) * 0.22;
+      player.rotation.y += Math.sin(t * 8) * dt * 0.16;
+    }
+  } else {
+    torso.rotation.z = 0;
+    head.rotation.z = 0;
+    limbs[0].rotation.x = walk * 0.35;
+    limbs[1].rotation.x = -walk * 0.35;
+    limbs[0].rotation.z = 0.38;
+    limbs[1].rotation.z = -0.38;
+    limbs[2].rotation.x = -walk * 0.45;
+    limbs[3].rotation.x = walk * 0.45;
+  }
+  halo.rotation.z += dt * (dancing ? 6.8 : 3.4);
   chest.scale.setScalar(1 + Math.sin(t * 6) * 0.16);
   const imbalanceAmount = THREE.MathUtils.clamp(Math.abs(balance) / 180, 0, 1);
   const targetCollectorColor = balance < -45
@@ -1017,7 +1115,28 @@ function animate() {
 
   core.rotation.x += dt * (0.18 + pressure * 0.03);
   core.rotation.y += dt * (0.34 + yieldRate * 0.18);
-  core.scale.setScalar(1 + (1 - stability) * 0.18 + Math.sin(t * 4) * 0.015);
+  const ultimateGravityPower = ultimateTime > 0 ? 1 : ultimateFadeTime / ULTIMATE_FADE_DURATION;
+  if (ultimateGravityPower > 0) {
+    coreMass = Math.max(0, coreMass - dt * (18 + coreMass * 0.9));
+  } else {
+    coreMass = Math.max(0, coreMass - dt * 0.18);
+  }
+  coreCollapse = THREE.MathUtils.clamp(coreMass / 180, 0, 1);
+  coreBigBangTime = Math.max(0, coreBigBangTime - dt);
+  const corePulse = coreBigBangTime > 0 ? coreBigBangTime / 1.1 : 0;
+  const collapseScale = 1 - coreCollapse * 0.58;
+  coreGlass.opacity = 0.18 + coreCollapse * 0.42 + corePulse * 0.28;
+  coreGlass.color.lerp(coreCollapse > 0.66 ? collectorInverseColor : collectorPositiveColor, 0.04);
+  core.scale.setScalar(
+    collapseScale +
+    corePulse * 1.8 +
+    (1 - stability) * 0.12 +
+    Math.sin(t * (4 + coreCollapse * 10)) * (0.015 + coreCollapse * 0.025)
+  );
+
+  if (coreCollapse >= 1 && coreBigBangTime <= 0) {
+    triggerElasticBigBang();
+  }
 
   for (const ring of fieldRings) {
     ring.rotation.z += ring.userData.speed * pressure;
@@ -1030,17 +1149,59 @@ function animate() {
   const correctionPower = correctionType ? THREE.MathUtils.clamp((Math.abs(balance) - 70) / 430, 0, 1) : 0;
   const correctionRadius = 10 + correctionPower * 24;
   const correctionStrength = 1.8 + correctionPower * 10;
+  bigBangElasticTime = Math.max(0, bigBangElasticTime - dt);
 
   for (const item of items) {
     item.rotation.x += dt * item.userData.spin;
     item.rotation.y += dt * item.userData.spin * 1.35;
     item.position.y += Math.sin(t * 2 + item.userData.phase) * dt * 0.18;
 
+    if (bigBangElasticTime > 0 && item.userData.bigBangOrigin && item.userData.bigBangTarget) {
+      const elapsed = BIG_BANG_ELASTIC_DURATION - bigBangElasticTime;
+      const raw = THREE.MathUtils.clamp((elapsed - item.userData.bigBangPhase) / (BIG_BANG_ELASTIC_DURATION - 0.18), 0, 1);
+      const outT = THREE.MathUtils.clamp(raw / 0.36, 0, 1);
+      const returnT = THREE.MathUtils.clamp((raw - 0.36) / 0.64, 0, 1);
+      const outEase = 1 - Math.pow(1 - outT, 3);
+      const returnEase = 1 - Math.pow(1 - returnT, 3);
+      const wobble = Math.sin(raw * Math.PI * 6) * (1 - raw) * 0.08;
+      if (raw < 0.36) {
+        item.position.lerpVectors(item.userData.bigBangOrigin, item.userData.bigBangTarget, outEase);
+      } else {
+        item.position.lerpVectors(item.userData.bigBangTarget, item.userData.bigBangReturn, returnEase + wobble);
+      }
+      item.scale.setScalar(1 + Math.sin(raw * Math.PI) * 0.9);
+      if (raw >= 1) {
+        item.position.copy(item.userData.bigBangReturn);
+        item.scale.setScalar(1);
+        delete item.userData.bigBangOrigin;
+        delete item.userData.bigBangTarget;
+        delete item.userData.bigBangReturn;
+        delete item.userData.bigBangPhase;
+      }
+      continue;
+    }
+
     const centerDistance = Math.hypot(item.position.x, item.position.z);
     if (centerDistance > 8) {
       const centerPull = new THREE.Vector3(-item.position.x, 0, -item.position.z).normalize();
       const passivePull = Math.min(0.45, (centerDistance - 8) * 0.006);
       item.position.addScaledVector(centerPull, passivePull * dt);
+    }
+
+    const coreDistance = item.position.distanceTo(core.position);
+    const coreGravityRange = 30 + coreCollapse * 18;
+    if (ultimateGravityPower <= 0 && coreDistance < coreGravityRange && coreDistance > 0.08) {
+      const pullToCore = core.position.clone().sub(item.position).normalize();
+      const coreFalloff = 1 - coreDistance / coreGravityRange;
+      const corePull = (0.55 + coreCollapse * 3.8 + coreMass * 0.006) * coreFalloff * coreFalloff;
+      item.position.addScaledVector(pullToCore, corePull * dt);
+    }
+
+    if (ultimateGravityPower <= 0 && coreDistance < 1.05 + coreCollapse * 0.5) {
+      coreMass += item.userData.type === "positive" ? 2.2 : 3.2;
+      burstItemFromCore(item, 0.65);
+      item.scale.setScalar(0.65);
+      continue;
     }
 
     if (correctionType && item.userData.type === correctionType) {
@@ -1067,7 +1228,7 @@ function animate() {
     }
 
     if ((ultimateTime > 0 || ultimateFadeTime > 0) && item.userData.type === "inverse") {
-      const collapseTarget = ultimateTime > 0 ? player.position : ultimateCollapsePoint;
+      const collapseTarget = player.position;
       const ultimateDistance = item.position.distanceTo(collapseTarget);
       const ultimateRange = 34;
       if (ultimateDistance < ultimateRange && ultimateDistance > 0.05) {
@@ -1129,7 +1290,7 @@ function animate() {
   if (ultimateTime > 0) {
     ui.tech.textContent = `Ultimate actif : flux inverses attirés vers Nyra (${ultimateTime.toFixed(1)}s).`;
   } else if (ultimateFadeTime > 0) {
-    ui.tech.textContent = `Décélération gravitationnelle : les flux inverses glissent vers le point d'effondrement (${ultimateFadeTime.toFixed(1)}s).`;
+    ui.tech.textContent = `Décélération gravitationnelle : les flux inverses glissent encore vers Nyra (${ultimateFadeTime.toFixed(1)}s).`;
   } else if (correctionType) {
     ui.tech.textContent = correctionType === "positive"
       ? "Correction du noyau : déficit positif détecté. Le collecteur ouvre ses lignes de champ vers les flux Énergie+."

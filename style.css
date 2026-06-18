@@ -6,6 +6,7 @@
   --text: #ecf8ff;
   --muted: #9cb5c6;
   --accent: #70e4ff;
+  --defend-green: #a6ff3d;
   --hot: #ffd166;
   --inverse: #ff5f8f;
   --good: #86efac;
@@ -37,6 +38,12 @@ body,
   position: fixed;
   z-index: 4;
   backdrop-filter: blur(14px);
+}
+
+body.hide-hud .hud {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease;
 }
 
 .topbar {
@@ -80,6 +87,13 @@ h2 {
   font-size: 11px;
   font-weight: 800;
   margin-bottom: 8px;
+}
+
+.defend-brand {
+  color: var(--defend-green);
+  text-shadow:
+    0 0 8px rgba(166, 255, 61, .75),
+    0 0 22px rgba(166, 255, 61, .35);
 }
 
 .actions {
@@ -301,6 +315,34 @@ button:hover {
   animation: demoScroll 22s linear infinite;
 }
 
+.demo-scroller strong {
+  display: inline-block;
+  color: #fff;
+  font-size: 22px;
+  letter-spacing: 3px;
+  padding: 0 10px;
+  text-transform: none;
+  animation: openAiPulse .8s ease-in-out infinite alternate;
+  text-shadow:
+    0 0 6px #fff,
+    0 0 14px rgba(112, 228, 255, .95),
+    0 0 26px rgba(255, 95, 143, .75),
+    0 0 42px rgba(255, 209, 102, .55);
+}
+
+.demo-scroller b {
+  display: inline-block;
+  color: var(--defend-green);
+  font-size: 23px;
+  letter-spacing: 4px;
+  padding: 0 12px;
+  animation: defendSignal 1.1s steps(2, end) infinite;
+  text-shadow:
+    0 0 8px rgba(166, 255, 61, .95),
+    0 0 18px rgba(166, 255, 61, .75),
+    0 0 34px rgba(112, 228, 255, .42);
+}
+
 .modal {
   width: min(600px, calc(100vw - 34px));
   padding: 28px;
@@ -391,4 +433,26 @@ button:hover {
 @keyframes demoScroll {
   from { transform: translateX(0); }
   to { transform: translateX(-100%); }
+}
+
+@keyframes openAiPulse {
+  from {
+    transform: translateY(0) scale(1);
+    filter: hue-rotate(0deg);
+  }
+  to {
+    transform: translateY(-2px) scale(1.12);
+    filter: hue-rotate(35deg);
+  }
+}
+
+@keyframes defendSignal {
+  0%, 100% {
+    transform: translateY(0) skewX(0deg);
+    filter: brightness(1);
+  }
+  50% {
+    transform: translateY(-1px) skewX(-6deg);
+    filter: brightness(1.35);
+  }
 }
