@@ -216,14 +216,16 @@ button:hover {
   }
 
   .panel {
-    width: calc(100vw - 28px);
-    left: 14px;
-    right: 14px;
+    width: min(340px, calc(100vw - 28px));
     top: auto;
   }
 
   .left-panel {
+    left: 14px;
+    right: auto;
     bottom: 78px;
+    max-height: min(42vh, 330px);
+    overflow: auto;
   }
 
   .right-panel,
