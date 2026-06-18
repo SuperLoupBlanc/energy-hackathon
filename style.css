@@ -183,10 +183,123 @@ button:hover {
   z-index: 10;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at center, rgba(112, 228, 255, .12), rgba(2, 6, 18, .88) 55%, #020612);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(112, 228, 255, .16), rgba(2, 6, 18, .9) 54%, #020612),
+    linear-gradient(180deg, #020612, #071022 52%, #020612);
 }
 
 .overlay.hidden { display: none; }
+
+.overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, .035) 0,
+    rgba(255, 255, 255, .035) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  mix-blend-mode: overlay;
+  opacity: .38;
+}
+
+.demo-parallax {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.demo-grid {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  bottom: -26%;
+  height: 62%;
+  transform: perspective(420px) rotateX(62deg);
+  transform-origin: center bottom;
+  background:
+    linear-gradient(rgba(112, 228, 255, .22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(112, 228, 255, .18) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: .42;
+  animation: gridRush 2.8s linear infinite;
+}
+
+.demo-stars {
+  position: absolute;
+  inset: -20%;
+  background-repeat: repeat;
+  opacity: .5;
+}
+
+.demo-stars.layer-a {
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, .9) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(112, 228, 255, .7) 0 1px, transparent 1.5px);
+  background-size: 96px 96px, 148px 148px;
+  animation: starSlideA 18s linear infinite;
+}
+
+.demo-stars.layer-b {
+  background-image:
+    radial-gradient(circle, rgba(255, 209, 102, .8) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(255, 95, 143, .7) 0 1px, transparent 1.5px);
+  background-size: 180px 180px, 240px 240px;
+  animation: starSlideB 32s linear infinite;
+}
+
+.demo-orbit {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  border: 1px solid rgba(112, 228, 255, .35);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotateX(65deg);
+  box-shadow: 0 0 36px rgba(112, 228, 255, .12);
+}
+
+.orbit-a {
+  width: min(72vw, 760px);
+  height: min(72vw, 760px);
+  animation: orbitSpin 13s linear infinite;
+}
+
+.orbit-b {
+  width: min(48vw, 510px);
+  height: min(48vw, 510px);
+  border-color: rgba(255, 95, 143, .32);
+  animation: orbitSpin 8s linear infinite reverse;
+}
+
+.demo-scroller {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  z-index: 12;
+  height: 34px;
+  overflow: hidden;
+  border-top: 1px solid rgba(112, 228, 255, .26);
+  border-bottom: 1px solid rgba(112, 228, 255, .26);
+  background: rgba(2, 6, 18, .74);
+  color: #ffd166;
+  font: 800 18px/34px "Courier New", monospace;
+  letter-spacing: 2px;
+  text-shadow:
+    0 0 8px rgba(255, 209, 102, .8),
+    0 0 18px rgba(112, 228, 255, .45);
+  white-space: nowrap;
+}
+
+.demo-scroller div {
+  display: inline-block;
+  padding-left: 100%;
+  animation: demoScroll 22s linear infinite;
+}
 
 .modal {
   width: min(600px, calc(100vw - 34px));
@@ -195,6 +308,8 @@ button:hover {
   border-radius: 8px;
   background: rgba(5, 16, 38, .88);
   box-shadow: 0 24px 90px rgba(0, 0, 0, .55);
+  position: relative;
+  z-index: 11;
 }
 
 .modal h2 {
@@ -251,4 +366,29 @@ button:hover {
   button {
     padding: 9px 11px;
   }
+}
+
+@keyframes gridRush {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 0 42px, 42px 0; }
+}
+
+@keyframes starSlideA {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-96px, 48px, 0); }
+}
+
+@keyframes starSlideB {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(120px, 80px, 0); }
+}
+
+@keyframes orbitSpin {
+  from { transform: translate(-50%, -50%) rotateX(65deg) rotateZ(0); }
+  to { transform: translate(-50%, -50%) rotateX(65deg) rotateZ(360deg); }
+}
+
+@keyframes demoScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
 }

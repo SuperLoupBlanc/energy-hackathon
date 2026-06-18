@@ -1,5 +1,7 @@
 # AstraFlux - Energy Hackathon
 
+[Demo web jouable](https://superloupblanc.github.io/energy-hackathon/)
+
 Prototype web jouable pour GitHub Pages.
 
 ## Concept
