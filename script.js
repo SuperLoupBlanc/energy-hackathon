@@ -78,6 +78,7 @@ let musicTapTimer = null;
 let modulePlayer = null;
 let moduleBuffer = null;
 let moduleMusicOn = false;
+let modulePlayRequest = 0;
 let moduleToggleHeld = false;
 let hudToggleHeld = false;
 const AMIGA_MODULE_PATH = "assets/Dr_Awesome_Crusader_Now_what.mod";
@@ -660,6 +661,7 @@ function toggleYouTubeMusic() {
   if (youtubeMusicOn && modulePlayer && moduleMusicOn) {
     modulePlayer.togglePause();
     moduleMusicOn = false;
+    updateIntroMusicButton();
   }
   if (!youtubePlayer) createYouTubePlayer();
 
@@ -738,21 +740,40 @@ function ensureModulePlayer() {
 function playAmigaModule() {
   if (!ensureModulePlayer()) return;
   stopYouTubeMusic();
+  const requestId = ++modulePlayRequest;
 
   if (moduleBuffer) {
     modulePlayer.play(moduleBuffer);
     moduleMusicOn = true;
+    updateIntroMusicButton();
     ui.tech.textContent = "Module Amiga: Dr Awesome - Crusader Now What.";
     return;
   }
 
   ui.tech.textContent = "Chargement du module Amiga...";
   modulePlayer.load(AMIGA_MODULE_PATH, (buffer) => {
+    if (requestId !== modulePlayRequest) return;
     moduleBuffer = buffer;
     modulePlayer.play(moduleBuffer);
     moduleMusicOn = true;
+    updateIntroMusicButton();
     ui.tech.textContent = "Module Amiga: Dr Awesome - Crusader Now What.";
   });
+}
+
+function updateIntroMusicButton() {
+  const button = document.getElementById("introMusicBtn");
+  if (button) button.textContent = moduleMusicOn ? "Stop Music" : "Intro Music";
+}
+
+function stopAmigaModule(message = "") {
+  modulePlayRequest += 1;
+  if (modulePlayer && moduleMusicOn) {
+    modulePlayer.togglePause();
+  }
+  moduleMusicOn = false;
+  updateIntroMusicButton();
+  if (message) ui.tech.textContent = message;
 }
 
 function toggleAmigaModule() {
@@ -761,11 +782,7 @@ function toggleAmigaModule() {
     return;
   }
 
-  if (modulePlayer) {
-    modulePlayer.togglePause();
-    moduleMusicOn = false;
-    ui.tech.textContent = "Module Amiga en pause.";
-  }
+  stopAmigaModule("Module Amiga en pause.");
 }
 
 function playCollectSound(type, xPosition) {
@@ -865,8 +882,13 @@ addEventListener("gamepaddisconnected", () => {
 
 document.getElementById("startBtn").onclick = () => {
   ensureAudio();
+  stopAmigaModule();
   started = true;
   document.getElementById("startScreen").classList.add("hidden");
+};
+document.getElementById("introMusicBtn").onclick = () => {
+  ensureAudio();
+  toggleAmigaModule();
 };
 document.getElementById("pauseBtn").onclick = () => {
   paused = !paused;

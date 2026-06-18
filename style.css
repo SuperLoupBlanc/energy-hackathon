@@ -366,6 +366,12 @@ button:hover {
   margin: 14px 0 20px;
 }
 
+.intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 @media (max-width: 960px) {
   .topbar {
     left: 14px;
