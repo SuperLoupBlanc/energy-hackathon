@@ -104,14 +104,14 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="assets/vendor/three-0.160.0/three.min.js"></script>
+  <script src="assets/vendor/chart.js-4.4.1/chart.umd.min.js"></script>
+  <script src="assets/vendor/tfjs-4.17.0/tf.min.js"></script>
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        "three": "./assets/vendor/three-0.160.0/three.module.js",
+        "three/addons/": "./assets/vendor/three-0.160.0/examples/jsm/"
       }
     }
   </script>
@@ -125,20 +125,20 @@
     window.openMptReady = false;
     window.Module = window.Module || {};
     window.Module.locateFile = function (path) {
-      return "https://cdn.jsdelivr.net/gh/deskjet/chiptune2.js@master/" + path;
+      return "assets/vendor/chiptune2/" + path;
     };
     window.Module.onRuntimeInitialized = function () {
       window.libopenmpt = window.Module;
       window.openMptReady = true;
     };
   </script>
-  <script src="https://cdn.jsdelivr.net/gh/deskjet/chiptune2.js@master/libopenmpt.js"></script>
+  <script src="assets/vendor/chiptune2/libopenmpt.js"></script>
   <script>
     if (window.Module) {
       window.libopenmpt = window.Module;
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/gh/deskjet/chiptune2.js@master/chiptune2.js"></script>
+  <script src="assets/vendor/chiptune2/chiptune2.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -13,6 +13,10 @@ scene.fog = new THREE.FogExp2(0x020612, 0.032);
 
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 130);
 camera.position.set(0, 7, 15);
+const cameraTargetPosition = new THREE.Vector3();
+const cameraTargetLookAt = new THREE.Vector3();
+const cameraIdleOrbit = new THREE.Vector3();
+let idleCameraBlend = 0;
 
 const clock = new THREE.Clock();
 const keys = new Set();
@@ -1777,10 +1781,25 @@ function animate() {
   particles.geometry.attributes.position.needsUpdate = true;
   particles.rotation.y += dt * 0.035;
 
-  camera.position.x += (player.position.x - camera.position.x) * 0.055;
-  camera.position.y += (6.8 + player.position.y - camera.position.y) * 0.04;
-  camera.position.z += (player.position.z + 14.5 - camera.position.z) * 0.055;
-  camera.lookAt(player.position.x, 1.25, player.position.z);
+  const idleCameraActive = idleTime > 4 && !moving && dashPulse <= 0.02 && !levitating && ultimateTime <= 0;
+  idleCameraBlend = THREE.MathUtils.lerp(idleCameraBlend, idleCameraActive ? 1 : 0, idleCameraActive ? 0.025 : 0.09);
+  cameraIdleOrbit.set(
+    Math.sin(t * 0.32) * 2.4,
+    0.65 + Math.sin(t * 0.46) * 0.45,
+    Math.cos(t * 0.32) * 1.2
+  );
+  cameraTargetPosition.set(
+    player.position.x + cameraIdleOrbit.x * idleCameraBlend,
+    THREE.MathUtils.lerp(6.8 + player.position.y, 4.15 + player.position.y + cameraIdleOrbit.y, idleCameraBlend),
+    player.position.z + THREE.MathUtils.lerp(14.5, 7.2 + cameraIdleOrbit.z, idleCameraBlend)
+  );
+  camera.position.lerp(cameraTargetPosition, idleCameraActive ? 0.035 : 0.07);
+  cameraTargetLookAt.set(
+    THREE.MathUtils.lerp(player.position.x, player.position.x * 0.74 + core.position.x * 0.26, idleCameraBlend),
+    THREE.MathUtils.lerp(1.25, 1.85 + player.position.y * 0.18, idleCameraBlend),
+    THREE.MathUtils.lerp(player.position.z, player.position.z * 0.74 + core.position.z * 0.26, idleCameraBlend)
+  );
+  camera.lookAt(cameraTargetLookAt);
 
   ui.energy.textContent = Math.floor(energy).toString();
   ui.inverse.textContent = Math.floor(inverse).toString();
