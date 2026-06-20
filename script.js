@@ -130,21 +130,109 @@ for (let i = 0; i < 10; i += 1) {
 }
 
 const core = new THREE.Group();
-const coreMat = new THREE.MeshStandardMaterial({
-  color: 0x0b2448,
-  emissive: 0x06253b,
-  metalness: 0.6,
-  roughness: 0.26
-});
+const coreMat = new THREE.MeshBasicMaterial({ color: 0x39ff56, transparent: true, opacity: 0.18 });
 const coreGlass = new THREE.MeshBasicMaterial({
-  color: 0x70e4ff,
+  color: 0x39ff56,
   transparent: true,
-  opacity: 0.18,
-  wireframe: true
+  opacity: 0.86
 });
-core.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.0, 2), coreMat));
-core.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.28, 1), coreGlass));
+const coreOuter = new THREE.Group();
+const coreCross = new THREE.Group();
+
+function addBrainLine(points, material) {
+  const geometry = new THREE.BufferGeometry().setFromPoints(points.map(([x, y, z = 0]) => new THREE.Vector3(x, y, z)));
+  const line = new THREE.Line(geometry, material);
+  coreOuter.add(line);
+  return line;
+}
+
+function addBrainNode(x, y, z, color = 0x39ff56, size = 0.035) {
+  const node = new THREE.Mesh(
+    new THREE.SphereGeometry(size, 8, 6),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 })
+  );
+  node.position.set(x, y, z);
+  coreCross.add(node);
+  return node;
+}
+
+const brainLineMat = coreGlass;
+const brainMidMat = new THREE.LineBasicMaterial({ color: 0xd4ff45, transparent: true, opacity: 0.82 });
+const brainNodes = [];
+const brainMeshModel = window.DEFEND_BRAIN_MESH_MODEL;
+let coreBrainSurface = null;
+let coreBrainWire = null;
+if (brainMeshModel) {
+  const positions = new Float32Array(brainMeshModel.vertices.flat());
+  const indices = new Uint32Array(brainMeshModel.faces.flat());
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+
+  coreBrainSurface = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({
+      color: 0x39ff56,
+      transparent: true,
+      opacity: 0.055,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    })
+  );
+  const edgePositions = new Float32Array(brainMeshModel.edges.length * 6);
+  brainMeshModel.edges.forEach(([a, b], index) => {
+    const offset = index * 6;
+    const pa = brainMeshModel.vertices[a];
+    const pb = brainMeshModel.vertices[b];
+    edgePositions.set([pa[0], pa[1], pa[2], pb[0], pb[1], pb[2]], offset);
+  });
+  const wireGeometry = new THREE.BufferGeometry();
+  wireGeometry.setAttribute("position", new THREE.BufferAttribute(edgePositions, 3));
+  coreBrainWire = new THREE.LineSegments(
+    wireGeometry,
+    new THREE.LineBasicMaterial({
+      color: 0x39ff56,
+      transparent: true,
+      opacity: 0.82
+    })
+  );
+  coreOuter.add(coreBrainSurface, coreBrainWire);
+
+  for (const index of brainMeshModel.mid || []) {
+    const [x, y, z] = brainMeshModel.vertices[index];
+    brainNodes.push(addBrainNode(x, y, z, 0xd4ff45, 0.025));
+  }
+  for (const index of brainMeshModel.green || []) {
+    const [x, y, z] = brainMeshModel.vertices[index];
+    brainNodes.push(addBrainNode(x, y, z, 0x39ff56, 0.018));
+  }
+} else {
+  const brainModel = window.DEFEND_BRAIN_CORE_MODEL || {
+    nodes: [[-0.7, 0.7, 0.12], [0.7, 0.7, -0.12], [-0.9, 0, 0.18], [0.9, 0, -0.18], [-0.45, -0.72, 0.08], [0.45, -0.72, -0.08], [0, 0.88, 0], [0, -0.88, 0]],
+    edges: [[0, 2], [2, 4], [4, 7], [7, 5], [5, 3], [3, 1], [1, 6], [6, 0], [0, 3], [1, 2], [4, 5], [6, 7]],
+    mid: [6, 7]
+  };
+  for (const [a, b] of brainModel.edges) {
+    const pa = brainModel.nodes[a];
+    const pb = brainModel.nodes[b];
+    const material = brainModel.mid.includes(a) && brainModel.mid.includes(b) ? brainMidMat : brainLineMat;
+    addBrainLine([pa, pb], material);
+  }
+  for (let i = 0; i < brainModel.nodes.length; i += 1) {
+    const [x, y, z] = brainModel.nodes[i];
+    const isMid = brainModel.mid.includes(i);
+    brainNodes.push(addBrainNode(x, y, z, isMid ? 0xd4ff45 : 0x39ff56, isMid ? 0.035 : 0.03));
+  }
+}
+const coreInner = new THREE.Mesh(
+  new THREE.SphereGeometry(1.02, 24, 12),
+  new THREE.MeshBasicMaterial({ color: 0x39ff56, transparent: true, opacity: 0.035, wireframe: true })
+);
+core.add(coreInner, coreOuter, coreCross);
 core.position.set(0, 1.2, 0);
+core.rotation.y = -0.22;
 scene.add(core);
 
 const gravityAstre = new THREE.Group();
@@ -188,6 +276,7 @@ collector.position.set(0, 1.6, 0.43);
 const collectorPositiveColor = new THREE.Color(0x70e4ff);
 const collectorInverseColor = new THREE.Color(0xff5f8f);
 const collectorBalancedColor = new THREE.Color(0x86efac);
+const coreStableColor = new THREE.Color(0x39ff56);
 const collectorCore = new THREE.Mesh(
   new THREE.OctahedronGeometry(0.19, 1),
   new THREE.MeshBasicMaterial({ color: 0x70e4ff })
@@ -1046,7 +1135,8 @@ function animate() {
   const t = clock.elapsedTime;
 
   if (!started || paused) {
-    core.rotation.y += dt * 0.25;
+    core.rotation.x = Math.sin(t * 0.7) * 0.08;
+    core.rotation.y = -0.22 + Math.sin(t * 0.5) * 0.24;
     renderer.render(scene, camera);
     return;
   }
@@ -1344,8 +1434,8 @@ function animate() {
     }
   }
 
-  core.rotation.x += dt * (0.18 + pressure * 0.03);
-  core.rotation.y += dt * (0.34 + yieldRate * 0.18);
+  core.rotation.x = Math.sin(t * 0.7) * 0.08;
+  core.rotation.y = -0.22 + Math.sin(t * 0.5) * 0.24 + yieldRate * 0.08;
   const ultimateGravityPower = ultimateTime > 0 ? 1 : ultimateFadeTime / ULTIMATE_FADE_DURATION;
   if (ultimateGravityPower > 0) {
     coreMass = Math.max(0, coreMass - dt * (18 + coreMass * 0.9));
@@ -1356,8 +1446,18 @@ function animate() {
   coreBigBangTime = Math.max(0, coreBigBangTime - dt);
   const corePulse = coreBigBangTime > 0 ? coreBigBangTime / 1.1 : 0;
   const collapseScale = 1 - coreCollapse * 0.58;
-  coreGlass.opacity = 0.18 + coreCollapse * 0.42 + corePulse * 0.28;
-  coreGlass.color.lerp(coreCollapse > 0.66 ? collectorInverseColor : collectorPositiveColor, 0.04);
+  coreMat.opacity = 0.035 + corePulse * 0.08;
+  coreInner.material.opacity = 0.03 + coreCollapse * 0.04 + corePulse * 0.1;
+  coreGlass.opacity = 0.68 + coreCollapse * 0.22 + corePulse * 0.1;
+  coreGlass.color.lerp(coreCollapse > 0.66 ? collectorInverseColor : coreStableColor, 0.04);
+  if (coreBrainSurface && coreBrainWire) {
+    const targetCoreColor = coreCollapse > 0.66 ? collectorInverseColor : coreStableColor;
+    coreBrainSurface.material.opacity = 0.035 + coreCollapse * 0.06 + corePulse * 0.08;
+    coreBrainWire.material.opacity = 0.62 + coreCollapse * 0.24 + corePulse * 0.12;
+    coreBrainSurface.material.color.lerp(targetCoreColor, 0.04);
+    coreBrainWire.material.color.lerp(targetCoreColor, 0.04);
+  }
+  coreCross.rotation.z = Math.sin(t * 1.6) * 0.03;
   core.scale.setScalar(
     collapseScale +
     corePulse * 1.8 +
