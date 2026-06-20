@@ -44,6 +44,7 @@ let ultimateCooldown = 0;
 let ultimateHeld = false;
 let idleTime = 0;
 const ultimateCollapsePoint = new THREE.Vector3();
+const collectionPoint = new THREE.Vector3();
 const ULTIMATE_ENERGY_COST = 2000;
 const ULTIMATE_INVERSE_REMAINING_RATIO = 0.2;
 const ULTIMATE_ACTIVE_DURATION = 4;
@@ -254,11 +255,146 @@ for (const x of [-0.22, 0.22]) {
   player.add(leg);
 }
 
+function createBlenderNyraModel() {
+  if (window.NYRA_MECHA_MODEL) {
+    const model = window.NYRA_MECHA_MODEL;
+    const group = new THREE.Group();
+    group.name = "Nyra_AstraFlux_Mecha";
+    const materialCache = {};
+    const rig = {};
+    const partMap = new Map(model.components.map((part) => [part.name, part]));
+
+    function convertedPosition(name, fallback) {
+      const part = partMap.get(name);
+      return part
+        ? [part.position[0], part.position[2], part.position[1]]
+        : fallback;
+    }
+
+    function makePivot(name, position) {
+      const pivot = new THREE.Group();
+      pivot.name = `NyraMechaRig_${name}`;
+      pivot.position.fromArray(position);
+      pivot.userData.worldPosition = new THREE.Vector3().fromArray(position);
+      rig[name] = pivot;
+      group.add(pivot);
+      return pivot;
+    }
+
+    function parentPivot(child, parent) {
+      group.remove(child);
+      parent.add(child);
+      child.position.copy(child.userData.worldPosition).sub(parent.userData.worldPosition);
+    }
+
+    const rootPivot = makePivot("root", convertedPosition("pelvis_core", [0, 1.05, 0]));
+    const torsoPivot = makePivot("torso", convertedPosition("torso_white_chest", [0, 1.9, 0]));
+    const headPivot = makePivot("head", convertedPosition("head_helmet", [0, 2.55, 0]));
+    const leftArmPivot = makePivot("leftArm", convertedPosition("L_shoulder_joint", [-0.6, 1.82, 0]));
+    const rightArmPivot = makePivot("rightArm", convertedPosition("R_shoulder_joint", [0.6, 1.82, 0]));
+    const leftForearmPivot = makePivot("leftForearm", convertedPosition("L_elbow_joint", [-0.72, 1.02, 0]));
+    const rightForearmPivot = makePivot("rightForearm", convertedPosition("R_elbow_joint", [0.72, 1.02, 0]));
+    const leftLegPivot = makePivot("leftLeg", convertedPosition("L_hip_joint", [-0.27, 0.88, 0]));
+    const rightLegPivot = makePivot("rightLeg", convertedPosition("R_hip_joint", [0.27, 0.88, 0]));
+    const leftShinPivot = makePivot("leftShin", convertedPosition("L_knee_joint", [-0.27, 0.1, -0.02]));
+    const rightShinPivot = makePivot("rightShin", convertedPosition("R_knee_joint", [0.27, 0.1, -0.02]));
+
+    parentPivot(torsoPivot, rootPivot);
+    parentPivot(headPivot, torsoPivot);
+    parentPivot(leftArmPivot, torsoPivot);
+    parentPivot(rightArmPivot, torsoPivot);
+    parentPivot(leftForearmPivot, leftArmPivot);
+    parentPivot(rightForearmPivot, rightArmPivot);
+    parentPivot(leftLegPivot, rootPivot);
+    parentPivot(rightLegPivot, rootPivot);
+    parentPivot(leftShinPivot, leftLegPivot);
+    parentPivot(rightShinPivot, rightLegPivot);
+
+    function getMaterial(name) {
+      if (materialCache[name]) return materialCache[name];
+      const color = new THREE.Color().fromArray((model.materials && model.materials[name]) || [0.8, 0.86, 0.9]);
+      const emissiveBoost = name.includes("Visor") || name.includes("Beacon") || name.includes("Badge") ? 0.36 : 0.06;
+      materialCache[name] = new THREE.MeshStandardMaterial({
+        color,
+        emissive: color.clone().multiplyScalar(emissiveBoost),
+        metalness: name.includes("Frame") ? 0.62 : 0.42,
+        roughness: name.includes("Armor") ? 0.22 : 0.34
+      });
+      return materialCache[name];
+    }
+
+    function getPivotForPart(name) {
+      if (name.startsWith("L_forearm") || name.startsWith("L_elbow") || name.startsWith("L_black_wrist") || name.startsWith("L_hand")) return leftForearmPivot;
+      if (name.startsWith("R_forearm") || name.startsWith("R_elbow") || name.startsWith("R_black_wrist") || name.startsWith("R_hand")) return rightForearmPivot;
+      if (name.startsWith("L_shoulder") || name.startsWith("L_red_beacon") || name.startsWith("L_upper_arm")) return leftArmPivot;
+      if (name.startsWith("R_shoulder") || name.startsWith("R_red_beacon") || name.startsWith("R_upper_arm")) return rightArmPivot;
+      if (name.startsWith("L_knee") || name.startsWith("L_shin") || name.startsWith("L_ankle") || name.startsWith("L_foot")) return leftShinPivot;
+      if (name.startsWith("R_knee") || name.startsWith("R_shin") || name.startsWith("R_ankle") || name.startsWith("R_foot")) return rightShinPivot;
+      if (name.startsWith("L_hip") || name.startsWith("L_thigh")) return leftLegPivot;
+      if (name.startsWith("R_hip") || name.startsWith("R_thigh")) return rightLegPivot;
+      if (name.startsWith("head") || name.startsWith("jaw") || name.startsWith("green_visor") || name.includes("antenna")) return headPivot;
+      if (name.includes("torso") || name.includes("abdomen") || name.includes("badge") || name.includes("energy") || name.includes("panel")) return torsoPivot;
+      return rootPivot;
+    }
+
+    for (const part of model.components) {
+      const geometry = part.type === "sphere"
+        ? new THREE.SphereGeometry(0.5, 16, 8)
+        : new THREE.BoxGeometry(1, 1, 1);
+      const mesh = new THREE.Mesh(geometry, getMaterial(part.material));
+      mesh.name = `NyraMecha_${part.name}`;
+      const worldPosition = new THREE.Vector3(part.position[0], part.position[2], part.position[1]);
+      const parentPivot = getPivotForPart(part.name);
+      mesh.position.copy(worldPosition).sub(parentPivot.userData.worldPosition);
+      mesh.rotation.set(part.rotation[0], part.rotation[2], part.rotation[1]);
+      mesh.scale.set(part.scale[0], part.scale[2], part.scale[1]);
+      parentPivot.add(mesh);
+    }
+
+    group.position.y = 0.72;
+    group.scale.setScalar(0.74);
+    group.userData.rig = rig;
+    return group;
+  }
+
+  const data = window.NYRA_BLENDER_SPHERE_MESH;
+  if (!data) return null;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(data.positions, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(data.normals, 3));
+  geometry.setIndex(data.indices);
+  geometry.computeBoundingSphere();
+
+  const color = new THREE.Color().fromArray(data.color || [0.1, 0.95, 0.45]);
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    emissive: color.clone().multiplyScalar(0.18),
+    metalness: 0.55,
+    roughness: 0.28
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = "Nyra_Blender_MCP_Sphere";
+  mesh.position.y = 1.45;
+  mesh.scale.setScalar(0.56);
+  return mesh;
+}
+
+const blenderNyra = createBlenderNyraModel();
+if (blenderNyra) {
+  torso.visible = false;
+  head.visible = false;
+  hair.visible = false;
+  for (const limb of limbs) limb.visible = false;
+  collector.position.set(0, 2.48, -0.08);
+  player.add(blenderNyra);
+}
+
 const halo = makeRing(0.74, 0x70e4ff, 0.8);
-halo.position.y = 1.55;
+halo.position.y = blenderNyra ? 2.4 : 1.55;
 player.add(halo);
 const ultimateRing = makeRing(1.25, 0xff5f8f, 0.0);
-ultimateRing.position.y = 1.45;
+ultimateRing.position.y = blenderNyra ? 2.45 : 1.45;
 player.add(ultimateRing);
 scene.add(player);
 
@@ -1026,8 +1162,8 @@ function animate() {
 
   const walk = moving ? Math.sin(t * 9) : 0;
   const dancing = idleTime > 4;
+  const idleMood = balance < -45 ? "needPositive" : balance > 45 ? "needInverse" : "balanced";
   if (dancing) {
-    const idleMood = balance < -45 ? "needPositive" : balance > 45 ? "needInverse" : "balanced";
     const groove = Math.sin(t * 6);
     const bounce = Math.abs(Math.sin(t * 6)) * 0.11;
     player.position.y += bounce;
@@ -1098,8 +1234,81 @@ function animate() {
   collectorRingA.rotation.z += dt * (2.5 + pressure * 0.4);
   collectorRingB.rotation.x -= dt * (2.1 + yieldRate);
   halo.scale.setScalar(1 + dashPulse * 0.55);
-  ultimateRing.rotation.z -= dt * 8;
   const ultimateFadePower = ultimateTime > 0 ? 1 : ultimateFadeTime / ULTIMATE_FADE_DURATION;
+  if (blenderNyra) {
+    if (blenderNyra.name === "Nyra_AstraFlux_Mecha") {
+      const rig = blenderNyra.userData.rig;
+      const stride = Math.sin(t * (moving ? 9.2 : 2.4));
+      const idleWave = Math.sin(t * 3.8);
+      const hoverPose = levitating ? 1 : 0;
+      const ultimatePose = ultimateFadePower > 0 ? ultimateFadePower : 0;
+
+      blenderNyra.rotation.z = THREE.MathUtils.lerp(blenderNyra.rotation.z, -dx * 0.12, 0.12);
+      blenderNyra.rotation.x = THREE.MathUtils.lerp(blenderNyra.rotation.x, -0.08 + dz * 0.08, 0.12);
+      blenderNyra.scale.setScalar(0.74 + dashPulse * 0.05 + ultimateFadePower * 0.08);
+
+      if (rig) {
+        rig.torso.rotation.set(-0.06 * ultimatePose - dashPulse * 0.16, Math.sin(t * 2.8) * (dancing ? 0.12 : 0.02), Math.sin(t * 3.2) * (moving ? 0.035 : 0.018));
+        rig.head.rotation.set(-dz * 0.05 - 0.08 * ultimatePose, Math.sin(t * 2.1) * 0.08 + dx * 0.12, 0);
+        rig.leftArm.rotation.set(0, 0, 0);
+        rig.rightArm.rotation.set(0, 0, 0);
+        rig.leftForearm.rotation.set(0, 0, 0);
+        rig.rightForearm.rotation.set(0, 0, 0);
+        const legSwing = moving ? stride * 0.24 : 0;
+        rig.leftLeg.rotation.set(legSwing, 0, 0);
+        rig.rightLeg.rotation.set(-legSwing, 0, 0);
+        rig.leftShin.rotation.set(-Math.max(0, legSwing) * 0.42, 0, 0);
+        rig.rightShin.rotation.set(-Math.max(0, -legSwing) * 0.42, 0, 0);
+
+        if (dancing && !moving) {
+          const moodLean = idleMood === "balanced" ? 0 : idleMood === "needPositive" ? -0.18 : 0.18;
+          const dancePulse = Math.sin(t * 6.4);
+          const softBounce = Math.abs(Math.sin(t * 3.2));
+          const sideStep = Math.sin(t * 4.1);
+          const shoulderPop = Math.sin(t * 8.2);
+          const waveCycle = (t + (idleMood === "balanced" ? 0 : idleMood === "needPositive" ? 1.4 : 2.8)) % 9;
+          const waving = waveCycle > 5.7 && waveCycle < 7.4;
+          const wave = waving ? Math.sin(t * 13) : 0;
+
+          rig.leftLeg.rotation.x = sideStep * 0.08;
+          rig.rightLeg.rotation.x = -sideStep * 0.08;
+          rig.leftShin.rotation.x = Math.max(0, -sideStep) * 0.08;
+          rig.rightShin.rotation.x = Math.max(0, sideStep) * 0.08;
+          rig.head.rotation.y = moodLean + idleWave * 0.1;
+          rig.head.rotation.x = -0.04 + softBounce * 0.06;
+          rig.torso.rotation.y = moodLean * 0.42 + Math.sin(t * 2.8) * 0.16;
+          rig.torso.rotation.z = Math.sin(t * 4.2) * 0.08;
+
+          if (idleMood === "balanced") {
+            rig.leftArm.rotation.set(0.12 + dancePulse * 0.14, 0, 0.5 + idleWave * 0.16 + shoulderPop * 0.05);
+            rig.rightArm.rotation.set(-0.12 - dancePulse * 0.14, 0, -0.5 - idleWave * 0.16 - shoulderPop * 0.05);
+            rig.leftForearm.rotation.set(0.38 + softBounce * 0.14, 0, -0.08 + dancePulse * 0.05);
+            rig.rightForearm.rotation.set(0.36 + softBounce * 0.14, 0, 0.08 - dancePulse * 0.05);
+          } else if (idleMood === "needPositive") {
+            rig.leftArm.rotation.set(-0.16 + dancePulse * 0.1, 0, 0.32 + shoulderPop * 0.04);
+            rig.rightArm.rotation.set(-0.62 + Math.sin(t * 5.4) * 0.12, 0, -0.82);
+            rig.leftForearm.rotation.set(0.18 + softBounce * 0.08, 0, 0);
+            rig.rightForearm.rotation.set(0.78 + Math.sin(t * 7.4) * 0.12, 0, -0.16);
+          } else {
+            rig.leftArm.rotation.set(-0.62 + Math.sin(t * 5.6) * 0.12, 0, 0.82);
+            rig.rightArm.rotation.set(-0.16 - dancePulse * 0.1, 0, -0.32 - shoulderPop * 0.04);
+            rig.leftForearm.rotation.set(0.78 + Math.sin(t * 7.2) * 0.12, 0, 0.16);
+            rig.rightForearm.rotation.set(0.18 + softBounce * 0.08, 0, 0);
+          }
+
+          if (waving) {
+            rig.rightArm.rotation.set(-0.92, 0, -1.02 + wave * 0.08);
+            rig.rightForearm.rotation.set(1.0 + wave * 0.22, 0, -0.42 + wave * 0.16);
+            rig.head.rotation.y = Math.sin(t * 3) * 0.08;
+          }
+        }
+      }
+    } else {
+      blenderNyra.rotation.y += dt * (0.45 + dashPulse * 3.5);
+      blenderNyra.scale.setScalar(0.56 + dashPulse * 0.08 + ultimateFadePower * 0.12);
+    }
+  }
+  ultimateRing.rotation.z -= dt * 8;
   ultimateRing.material.opacity = ultimateFadePower > 0 ? 0.18 + ultimateFadePower * 0.6 : 0;
   ultimateRing.scale.setScalar(
     ultimateFadePower > 0
@@ -1172,6 +1381,7 @@ function animate() {
   const correctionRadius = 10 + correctionPower * 24;
   const correctionStrength = 1.8 + correctionPower * 10;
   bigBangElasticTime = Math.max(0, bigBangElasticTime - dt);
+  collector.getWorldPosition(collectionPoint);
 
   for (const item of items) {
     item.rotation.x += dt * item.userData.spin;
@@ -1227,11 +1437,11 @@ function animate() {
     }
 
     if (correctionType && item.userData.type === correctionType) {
-      const correctionDistance = item.position.distanceTo(player.position);
+      const correctionDistance = item.position.distanceTo(collectionPoint);
       if (correctionDistance < correctionRadius && correctionDistance > 0.05) {
-        const pullToPlayer = player.position.clone().sub(item.position).normalize();
+        const pullToCollector = collectionPoint.clone().sub(item.position).normalize();
         const falloff = 1 - correctionDistance / correctionRadius;
-        item.position.addScaledVector(pullToPlayer, correctionStrength * falloff * falloff * dt);
+        item.position.addScaledVector(pullToCollector, correctionStrength * falloff * falloff * dt);
         item.scale.setScalar(Math.max(item.scale.x, 1 + correctionPower * falloff * 0.8));
       }
     }
@@ -1250,7 +1460,7 @@ function animate() {
     }
 
     if ((ultimateTime > 0 || ultimateFadeTime > 0) && item.userData.type === "inverse") {
-      const collapseTarget = player.position;
+      const collapseTarget = collectionPoint;
       const ultimateDistance = item.position.distanceTo(collapseTarget);
       const ultimateRange = 34;
       if (ultimateDistance < ultimateRange && ultimateDistance > 0.05) {
@@ -1266,9 +1476,9 @@ function animate() {
       }
     }
 
-    const dist = item.position.distanceTo(player.position);
+    const dist = item.position.distanceTo(collectionPoint);
     if (dist < gravityRadius && dist > 0.04) {
-      const pull = player.position.clone().sub(item.position).normalize();
+      const pull = collectionPoint.clone().sub(item.position).normalize();
       const falloff = 1 - dist / gravityRadius;
       item.position.addScaledVector(pull, gravityStrength * falloff * falloff * dt);
       item.scale.setScalar(1 + falloff * 0.35);
@@ -1276,14 +1486,14 @@ function animate() {
       item.scale.setScalar(1);
     }
 
-    const collectDist = item.position.distanceTo(player.position);
+    const collectDist = item.position.distanceTo(collectionPoint);
     if (collectDist < 1.25) {
       if (item.userData.type === "positive") {
         energy += 6 + yieldRate * 10;
       } else {
         inverse += 5 + pressure * 2.4;
       }
-      playCollectSound(item.userData.type, item.position.x - player.position.x);
+      playCollectSound(item.userData.type, item.position.x - collectionPoint.x);
       placeItem(item, true);
     }
   }
