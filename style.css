@@ -191,6 +191,76 @@ button:hover {
   font-size: 13px;
 }
 
+.youtube-status {
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border: 1px solid rgba(112, 228, 255, .46);
+  border-radius: 8px;
+  background: rgba(2, 6, 18, .78);
+  box-shadow:
+    0 0 18px rgba(112, 228, 255, .18),
+    inset 0 0 18px rgba(112, 228, 255, .08);
+  color: #e8fbff;
+  font-size: 12px;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: opacity .22s ease, transform .22s ease;
+}
+
+.youtube-status.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px) scale(.96);
+}
+
+.youtube-status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #70e4ff;
+  box-shadow:
+    0 0 8px rgba(112, 228, 255, .95),
+    0 0 18px rgba(112, 228, 255, .7);
+  animation: openAiPulse .8s ease-in-out infinite alternate;
+}
+
+.youtube-status__label {
+  color: rgba(112, 228, 255, .82);
+  letter-spacing: 1px;
+}
+
+.youtube-status strong {
+  display: inline-block;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  text-shadow:
+    0 0 6px #fff,
+    0 0 14px rgba(112, 228, 255, .95),
+    0 0 24px rgba(255, 95, 143, .55);
+  animation: openAiPulse .8s ease-in-out infinite alternate;
+}
+
+.youtube-status.playing::before {
+  background: var(--defend-green);
+  box-shadow:
+    0 0 8px rgba(166, 255, 61, .95),
+    0 0 18px rgba(166, 255, 61, .7);
+}
+
+.youtube-status.paused::before,
+.youtube-status.error::before {
+  background: #ff5f8f;
+  box-shadow:
+    0 0 8px rgba(255, 95, 143, .95),
+    0 0 18px rgba(255, 95, 143, .7);
+}
+
 .overlay {
   position: fixed;
   inset: 0;

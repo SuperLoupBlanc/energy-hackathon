@@ -45,6 +45,8 @@ let ultimateHeld = false;
 let idleTime = 0;
 const ultimateCollapsePoint = new THREE.Vector3();
 const collectionPoint = new THREE.Vector3();
+let animatedNyra = null;
+let nyraAnimationState = "";
 const ULTIMATE_ENERGY_COST = 2000;
 const ULTIMATE_INVERSE_REMAINING_RATIO = 0.2;
 const ULTIMATE_ACTIVE_DURATION = 4;
@@ -65,6 +67,7 @@ let musicTimer = null;
 let youtubePlayer = null;
 let youtubeReady = false;
 let youtubeMusicOn = false;
+let youtubeLoading = false;
 let musicToggleHeld = false;
 const DEFAULT_YOUTUBE_MUSIC = {
   videoId: "_qBI_K4Yp60",
@@ -83,6 +86,7 @@ let modulePlayRequest = 0;
 let moduleToggleHeld = false;
 let hudToggleHeld = false;
 const AMIGA_MODULE_PATH = "assets/Dr_Awesome_Crusader_Now_what.mod";
+const NYRA_ANIMATED_GLB_PATH = "assets/nyra_mecha.blend_export.glb";
 
 const ui = {
   energy: document.getElementById("energyValue"),
@@ -91,7 +95,8 @@ const ui = {
   yield: document.getElementById("yieldValue"),
   balance: document.getElementById("balanceValue"),
   tech: document.getElementById("techText"),
-  stability: document.getElementById("stabilityBar")
+  stability: document.getElementById("stabilityBar"),
+  youtubeStatus: document.getElementById("youtubeStatus")
 };
 
 scene.add(new THREE.HemisphereLight(0x9bedff, 0x071027, 1.4));
@@ -487,6 +492,99 @@ ultimateRing.position.y = blenderNyra ? 2.45 : 1.45;
 player.add(ultimateRing);
 scene.add(player);
 
+function getAnimationClipName(clips, aliases) {
+  const normalizedAliases = aliases.map((name) => name.toLowerCase());
+  const clip = clips.find((candidate) => {
+    const name = candidate.name.toLowerCase();
+    return normalizedAliases.some((alias) => name === alias || name.includes(alias));
+  });
+  return clip ? clip.name : null;
+}
+
+function playNyraAnimation(stateName, fadeDuration = 0.18) {
+  if (!animatedNyra || nyraAnimationState === stateName) return;
+  const nextAction = animatedNyra.actions[stateName] || animatedNyra.actions.idle;
+  const previousAction = animatedNyra.actions[nyraAnimationState];
+  if (!nextAction) return;
+
+  nextAction.enabled = true;
+  nextAction.reset();
+  nextAction.play();
+  if (previousAction && previousAction !== nextAction) {
+    previousAction.crossFadeTo(nextAction, fadeDuration, false);
+  }
+  nyraAnimationState = stateName;
+}
+
+function setupAnimatedNyra(gltf) {
+  const clips = gltf.animations || [];
+  if (!clips.length) {
+    console.warn("Nyra GLB loaded, but it contains no animation clips:", NYRA_ANIMATED_GLB_PATH);
+    return;
+  }
+
+  const moduleThree = window.ASTRA_GLTF.THREE;
+  const model = gltf.scene;
+  model.name = "Nyra_AstraFlux_AnimatedGLB";
+  model.position.set(0, 0.72, 0);
+  model.rotation.y = Math.PI;
+  model.scale.setScalar(0.74);
+
+  const mixer = new moduleThree.AnimationMixer(model);
+  const clipNames = {
+    idle: getAnimationClipName(clips, ["idle", "stand", "wait"]) || clips[0].name,
+    walk: getAnimationClipName(clips, ["walk", "run", "move"]),
+    dash: getAnimationClipName(clips, ["dash", "boost", "sprint"]),
+    dance: getAnimationClipName(clips, ["dance", "groove"]),
+    danceBalanced: getAnimationClipName(clips, ["dancebalanced", "dance_balanced", "balanced"]),
+    dancePositive: getAnimationClipName(clips, ["dancepositive", "dance_positive", "positive"]),
+    danceInverse: getAnimationClipName(clips, ["danceinverse", "dance_inverse", "inverse"]),
+    ultimate: getAnimationClipName(clips, ["ultimate", "collapse", "cast", "power"])
+  };
+
+  const actions = {};
+  for (const [state, clipName] of Object.entries(clipNames)) {
+    if (!clipName) continue;
+    const clip = clips.find((candidate) => candidate.name === clipName);
+    if (clip) actions[state] = mixer.clipAction(clip);
+  }
+
+  if (!actions.idle) {
+    console.warn("Nyra GLB has clips, but no usable idle/default animation:", clips.map((clip) => clip.name));
+    return;
+  }
+
+  torso.visible = false;
+  head.visible = false;
+  hair.visible = false;
+  for (const limb of limbs) limb.visible = false;
+  if (blenderNyra) blenderNyra.visible = false;
+  player.add(model);
+  animatedNyra = { model, mixer, actions, clipNames };
+  window.ASTRA_NYRA_ANIMATION = animatedNyra;
+  playNyraAnimation("idle", 0);
+  console.info("Nyra animated GLB ready:", clipNames);
+}
+
+function loadAnimatedNyra() {
+  if (!window.ASTRA_GLTF) {
+    window.addEventListener("astra:gltf-ready", loadAnimatedNyra, { once: true });
+    return;
+  }
+
+  const loader = new window.ASTRA_GLTF.GLTFLoader();
+  loader.load(
+    NYRA_ANIMATED_GLB_PATH,
+    setupAnimatedNyra,
+    undefined,
+    (error) => {
+      console.warn("Nyra animated GLB not available, keeping manual model:", error);
+    }
+  );
+}
+
+loadAnimatedNyra();
+
 const itemGeo = {
   positive: new THREE.OctahedronGeometry(0.28),
   inverse: new THREE.IcosahedronGeometry(0.34)
@@ -772,6 +870,19 @@ function getStoredYouTubeMusic() {
   };
 }
 
+function setYouTubeStatus(state, text = "") {
+  if (!ui.youtubeStatus) return;
+  ui.youtubeStatus.classList.remove("hidden", "loading", "playing", "paused", "error");
+  if (!state) {
+    ui.youtubeStatus.classList.add("hidden");
+    return;
+  }
+
+  ui.youtubeStatus.classList.add(state);
+  const label = ui.youtubeStatus.querySelector("strong");
+  if (label) label.textContent = text || state;
+}
+
 function getYouTubeMusicId() {
   const stored = getStoredYouTubeMusic();
   if (stored) return stored;
@@ -798,6 +909,8 @@ function promptYouTubeMusicId() {
 
   storeYouTubeMusic(parsed);
   youtubeMusicOn = true;
+  youtubeLoading = true;
+  setYouTubeStatus("loading", "Chargement");
 
   if (youtubePlayer) {
     youtubeReady = true;
@@ -816,6 +929,10 @@ function promptYouTubeMusicId() {
 
 function loadYouTubeMusic() {
   if (!youtubePlayer) return;
+  if (youtubeMusicOn) {
+    youtubeLoading = true;
+    setYouTubeStatus("loading", "Chargement");
+  }
   if (youtubePlaylistId && youtubePlayer.loadPlaylist) {
     youtubePlayer.loadPlaylist({
       list: youtubePlaylistId,
@@ -869,6 +986,27 @@ function createYouTubePlayer() {
         youtubePlayer.setVolume(38);
         if (youtubePlaylistId) loadYouTubeMusic();
         if (youtubeMusicOn) youtubePlayer.playVideo();
+      },
+      onStateChange: (event) => {
+        if (event.data === YT.PlayerState.PLAYING) {
+          youtubeLoading = false;
+          setYouTubeStatus("playing", "Lecture");
+        } else if (event.data === YT.PlayerState.BUFFERING || event.data === YT.PlayerState.CUED) {
+          if (youtubeMusicOn) {
+            youtubeLoading = true;
+            setYouTubeStatus("loading", "Chargement");
+          }
+        } else if (event.data === YT.PlayerState.PAUSED) {
+          youtubeLoading = false;
+          if (youtubeMusicOn) setYouTubeStatus("paused", "Pause");
+        } else if (event.data === YT.PlayerState.ENDED && youtubeMusicOn) {
+          setYouTubeStatus("loading", "Relance");
+        }
+      },
+      onError: () => {
+        youtubeLoading = false;
+        youtubeMusicOn = false;
+        setYouTubeStatus("error", "Erreur");
       }
     }
   });
@@ -881,6 +1019,11 @@ window.onYouTubeIframeAPIReady = () => {
 function toggleYouTubeMusic() {
   const music = getYouTubeMusicId();
   if (!music) return;
+  if (youtubeLoading) {
+    ui.tech.textContent = "Musique YouTube en chargement. Patiente quelques secondes.";
+    setYouTubeStatus("loading", "Chargement");
+    return;
+  }
 
   youtubeMusicOn = !youtubeMusicOn;
   if (youtubeMusicOn && modulePlayer && moduleMusicOn) {
@@ -891,6 +1034,8 @@ function toggleYouTubeMusic() {
   if (!youtubePlayer) createYouTubePlayer();
 
   if (!youtubeReady || !youtubePlayer) {
+    youtubeLoading = youtubeMusicOn;
+    setYouTubeStatus(youtubeMusicOn ? "loading" : "paused", youtubeMusicOn ? "Chargement" : "Pause");
     ui.tech.textContent = youtubeMusicOn
       ? "Musique YouTube en chargement. Appuie sur M après quelques secondes pour pause/play."
       : "Musique YouTube en pause.";
@@ -898,8 +1043,12 @@ function toggleYouTubeMusic() {
   }
 
   if (youtubeMusicOn) {
+    youtubeLoading = true;
+    setYouTubeStatus("loading", "Chargement");
     youtubePlayer.playVideo();
   } else {
+    youtubeLoading = false;
+    setYouTubeStatus("paused", "Pause");
     youtubePlayer.pauseVideo();
   }
 }
@@ -925,6 +1074,8 @@ function handleMusicKey() {
 
 function stopYouTubeMusic() {
   youtubeMusicOn = false;
+  youtubeLoading = false;
+  setYouTubeStatus(null);
   if (youtubePlayer && youtubePlayer.pauseVideo) {
     youtubePlayer.pauseVideo();
   }
@@ -1253,6 +1404,26 @@ function animate() {
   const walk = moving ? Math.sin(t * 9) : 0;
   const dancing = idleTime > 4;
   const idleMood = balance < -45 ? "needPositive" : balance > 45 ? "needInverse" : "balanced";
+  if (animatedNyra) {
+    const animatedUltimateFadePower = ultimateTime > 0 ? 1 : ultimateFadeTime / ULTIMATE_FADE_DURATION;
+    const moodDance = idleMood === "needPositive"
+      ? (animatedNyra.actions.dancePositive ? "dancePositive" : "dance")
+      : idleMood === "needInverse"
+        ? (animatedNyra.actions.danceInverse ? "danceInverse" : "dance")
+        : (animatedNyra.actions.danceBalanced ? "danceBalanced" : "dance");
+    animatedNyra.mixer.update(dt);
+    const desiredAnimation = ultimateTime > 0 && animatedNyra.actions.ultimate
+      ? "ultimate"
+      : dashPulse > 0.18 && animatedNyra.actions.dash
+        ? "dash"
+        : moving && animatedNyra.actions.walk
+          ? "walk"
+          : dancing && animatedNyra.actions[moodDance]
+            ? moodDance
+            : "idle";
+    playNyraAnimation(desiredAnimation, desiredAnimation === "dash" ? 0.06 : 0.18);
+    animatedNyra.model.scale.setScalar(0.74 + dashPulse * 0.05 + animatedUltimateFadePower * 0.08);
+  }
   if (dancing) {
     const groove = Math.sin(t * 6);
     const bounce = Math.abs(Math.sin(t * 6)) * 0.11;

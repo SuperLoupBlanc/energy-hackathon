@@ -62,6 +62,11 @@
       <span>Objectif : Clean un Max et équilibre proche de 0</span>
     </section>
 
+    <div id="youtubeStatus" class="hud youtube-status hidden" aria-live="polite">
+      <span class="youtube-status__label">YouTube</span>
+      <strong>Chargement</strong>
+    </div>
+
     <div id="startScreen" class="overlay">
       <div class="demo-parallax" aria-hidden="true">
         <div class="demo-grid"></div>
@@ -102,6 +107,15 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="assets/gltf-loader-bridge.js"></script>
   <script src="assets/brain_core_mesh_model.js"></script>
   <script src="assets/defend_brain_core_model.js"></script>
   <script src="assets/nyra_mecha_model.js"></script>
